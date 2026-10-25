@@ -1,4 +1,4 @@
-Live app: paste the Streamlit Community Cloud URL here.
+Live app: [https://julian-nfl-fourth-down.streamlit.app/](https://julian-nfl-fourth-down.streamlit.app/)
 
 # Fourth down: go, punt, or kick?
 
