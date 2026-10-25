@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# Full nflverse dumps and the slim play-by-play cache are rebuilt by
+# scripts/pull_data.py. data/raw/pbp_slim.parquet is about 27 MB and is
+# not committed; regenerate it with that script (pass --refresh to replace it).
+data/raw/nflreadpy_cache/
+data/raw/pbp_slim.parquet
+data/interim/
+*.log

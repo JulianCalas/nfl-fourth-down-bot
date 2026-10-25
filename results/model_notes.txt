@@ -1,0 +1,101 @@
+Win-probability feature importance (current bundle)
+score_diff: 0.4694
+score_time: 0.2781
+expected_margin: 0.1529
+field_time: 0.0228
+quarter: 0.0226
+down: 0.0113
+yardline_100: 0.0100
+is_home: 0.0087
+game_seconds_remaining: 0.0082
+timeouts_def: 0.0058
+timeouts_off: 0.0049
+ydstogo: 0.0041
+goal_to_go: 0.0011
+receive_2h_if_relevant: 0.0000
+spread_missing: 0.0000
+
+Platt scaling on the calibration season
+intercept 0.0143
+slope 0.8900
+calibration-season log loss raw 0.4717
+calibration-season log loss calibrated 0.4703
+
+Field-goal weather GLM (offset = distance-curve log-odds)
+                 Generalized Linear Model Regression Results                  
+==============================================================================
+Dep. Variable:                      y   No. Observations:                12629
+Model:                            GLM   Df Residuals:                    12624
+Model Family:                Binomial   Df Model:                            4
+Link Function:                  Logit   Scale:                          1.0000
+Method:                          IRLS   Log-Likelihood:                -4606.4
+Date:                Sat, 24 Oct 2026   Deviance:                       9212.8
+Time:                        09:47:43   Pearson chi2:                 1.23e+04
+No. Iterations:                     5   Pseudo R-squ. (CS):          0.0009048
+Covariance Type:            nonrobust                                         
+====================================================================================
+                       coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------------
+indoor               0.0006      0.072      0.009      0.993      -0.141       0.142
+wind_mph            -0.0049      0.006     -0.802      0.422      -0.017       0.007
+cold                 0.2927      0.090      3.264      0.001       0.117       0.468
+altitude            -0.0836      0.144     -0.583      0.560      -0.365       0.198
+years_since_2014    -0.0014      0.008     -0.185      0.853      -0.016       0.013
+====================================================================================
+
+Conversion GLM: P(success)
+                 Generalized Linear Model Regression Results                  
+==============================================================================
+Dep. Variable:                      y   No. Observations:                 7944
+Model:                            GLM   Df Residuals:                     7936
+Model Family:                Binomial   Df Model:                            7
+Link Function:                  Logit   Scale:                          1.0000
+Method:                          IRLS   Log-Likelihood:                -5101.8
+Date:                Sat, 24 Oct 2026   Deviance:                       10204.
+Time:                        09:47:43   Pearson chi2:                 7.93e+03
+No. Iterations:                     4   Pseudo R-squ. (CS):            0.09429
+Covariance Type:            nonrobust                                         
+=======================================================================================
+                          coef    std err          z      P>|z|      [0.025      0.975]
+---------------------------------------------------------------------------------------
+intercept               0.8171      0.096      8.476      0.000       0.628       1.006
+ydstogo_per_10         -2.4183      0.181    -13.331      0.000      -2.774      -2.063
+ydstogo_per_10_sq       0.5112      0.116      4.391      0.000       0.283       0.739
+yardline_per_100        0.1743      0.464      0.376      0.707      -0.735       1.084
+yardline_per_100_sq     0.2854      0.542      0.527      0.598      -0.776       1.347
+goal_to_go             -0.3690      0.137     -2.694      0.007      -0.637      -0.101
+ydstogo_x_goal          0.2338      0.270      0.867      0.386      -0.295       0.762
+years_centered          0.0089      0.007      1.275      0.202      -0.005       0.023
+=======================================================================================
+
+Conversion GLM: P(touchdown)
+                 Generalized Linear Model Regression Results                  
+==============================================================================
+Dep. Variable:                      y   No. Observations:                 7944
+Model:                            GLM   Df Residuals:                     7936
+Model Family:                Binomial   Df Model:                            7
+Link Function:                  Logit   Scale:                          1.0000
+Method:                          IRLS   Log-Likelihood:                -1641.9
+Date:                Sat, 24 Oct 2026   Deviance:                       3283.8
+Time:                        09:47:43   Pearson chi2:                 7.86e+03
+No. Iterations:                     8   Pseudo R-squ. (CS):             0.1706
+Covariance Type:            nonrobust                                         
+=======================================================================================
+                          coef    std err          z      P>|z|      [0.025      0.975]
+---------------------------------------------------------------------------------------
+intercept              -0.7824      0.149     -5.243      0.000      -1.075      -0.490
+ydstogo_per_10          1.0465      0.429      2.442      0.015       0.206       1.887
+ydstogo_per_10_sq      -0.5203      0.289     -1.801      0.072      -1.087       0.046
+yardline_per_100      -10.2439      1.143     -8.959      0.000     -12.485      -8.003
+yardline_per_100_sq     4.9107      1.827      2.688      0.007       1.330       8.492
+goal_to_go              1.0412      0.174      6.000      0.000       0.701       1.381
+ydstogo_x_goal         -0.9265      0.345     -2.684      0.007      -1.603      -0.250
+years_centered          0.0179      0.014      1.315      0.189      -0.009       0.045
+=======================================================================================
+
+Failure split (share of failed attempts)
+downs 0.905
+giveaway 0.082
+defensive TD 0.009
+safety 0.004
+TD point weights 6/7/8 [0.09111310592459604, 0.8672736599127981, 0.041613234162605796]

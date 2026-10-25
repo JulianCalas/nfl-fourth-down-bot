@@ -1,0 +1,13 @@
+[project]
+name = "fourth-down"
+version = "1.0.0"
+description = "NFL fourth-down decisions from a from-scratch win probability model."
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
