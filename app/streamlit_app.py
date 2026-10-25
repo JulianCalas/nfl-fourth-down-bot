@@ -1,8 +1,9 @@
 """A small desk for one question: go, punt, or kick?
 
-Run from the repo root after the pipeline has saved models/current.joblib:
+The app reads the committed models/current.joblib bundle and nothing else.
+It does not download data and it does not need data/raw/pbp_slim.parquet.
 
-    streamlit run app/streamlit_app.py --server.port 8741
+    streamlit run app/streamlit_app.py
 """
 
 from __future__ import annotations
@@ -77,12 +78,101 @@ PRESETS = {
 
 @st.cache_resource
 def load_bundle() -> dict:
+    """Load the committed model bundle. Local file only; no network."""
     path = MODEL_DIR / "current.joblib"
     if not path.exists():
         raise FileNotFoundError(
             "models/current.joblib is missing. Run `python scripts/run_pipeline.py` first."
         )
     return joblib.load(path)
+
+
+@st.cache_data
+def score_situation(
+    our_score: int,
+    their_score: int,
+    quarter: int,
+    minutes: int,
+    seconds: int,
+    territory: str,
+    yard_marker: int,
+    ydstogo: int,
+    timeouts_off: int,
+    timeouts_def: int,
+    favored_by: float,
+    is_home: bool,
+    receive_2h: bool,
+    indoor: bool,
+    wind: int,
+    cold: bool,
+    altitude: bool,
+) -> dict:
+    """Win probability of go, punt, and kick for one fourth-down spot."""
+    bundle = load_bundle()
+    meta = bundle["meta"]
+    yl = yardline_100(territory, int(yard_marker))
+    gsr = game_seconds(int(quarter), int(minutes), int(seconds))
+    situation = make_situations(
+        [
+            {
+                "score_diff": float(our_score - their_score),
+                "game_seconds_remaining": gsr,
+                "yardline_100": yl,
+                "ydstogo": float(ydstogo),
+                "timeouts_off": float(timeouts_off),
+                "timeouts_def": float(timeouts_def),
+                "is_home": 1.0 if is_home else 0.0,
+                "expected_margin": float(favored_by),
+                "receive_2h": 1.0 if receive_2h else 0.0,
+                "spread_missing": 0.0,
+                "season": float(meta["calibrate_season"]),
+                "indoor": 1.0 if indoor else 0.0,
+                "wind_mph": 0.0 if indoor else float(wind),
+                "cold": 0.0 if indoor else (1.0 if cold else 0.0),
+                "altitude": 1.0 if altitude and not indoor else 0.0,
+            }
+        ]
+    )
+    graded = choice_win_probs(situation, bundle["wp"], bundle["fg"], bundle["conv"], bundle["punt"])
+    row = graded.row(0, named=True)
+    distance = float(yl + 17)
+    conv: ConversionModel = bundle["conv"]
+    fg: FieldGoalModel = bundle["fg"]
+    probs = conv.predict(
+        situation["ydstogo"].to_numpy(),
+        situation["yardline_100"].to_numpy(),
+        situation["season"].to_numpy(),
+    )
+    p_make = (
+        float(
+            fg.predict(
+                np.array([distance]),
+                situation["indoor"].to_numpy(),
+                situation["wind_mph"].to_numpy(),
+                situation["cold"].to_numpy(),
+                situation["altitude"].to_numpy(),
+                situation["season"].to_numpy(),
+            )[0]
+        )
+        if distance <= 68
+        else 0.0
+    )
+    return {
+        "recommended": str(row["recommended"]),
+        "wp_go": float(row["wp_go"]),
+        "wp_punt": float(row["wp_punt"]),
+        "wp_fg": float(row["wp_fg"]),
+        "wp_edge": float(row["wp_edge"]),
+        "p_success": float(probs["p_td"][0] + probs["p_fd"][0]),
+        "p_td": float(probs["p_td"][0]),
+        "p_make": p_make,
+        "distance": distance,
+        "yardline_100": float(yl),
+        "game_seconds_remaining": float(gsr),
+        "calibrate_season": int(meta["calibrate_season"]),
+        "train_first": int(meta["train_seasons"][0]),
+        "train_last": int(meta["train_seasons"][-1]),
+    }
 
 
 def yardline_100(territory: str, marker: int) -> float:
@@ -148,12 +238,11 @@ def main() -> None:
     )
 
     try:
-        bundle = load_bundle()
+        load_bundle()
     except FileNotFoundError as exc:
         st.error(str(exc))
         return
 
-    meta = bundle["meta"]
     _init_controls()
     with st.sidebar:
         st.header("Situation")
@@ -190,75 +279,53 @@ def main() -> None:
         cold = st.toggle("At or below 40°F, outdoors", key="cold", disabled=indoor)
         altitude = st.toggle("Denver", key="altitude")
 
-    yl = yardline_100(territory, int(yard_marker))
-    if territory == "Own" and yard_marker == 50:
-        yl = 50.0
-    gsr = game_seconds(int(quarter), int(minutes), int(seconds))
-    situation = make_situations(
-        [
-            {
-                "score_diff": float(our_score - their_score),
-                "game_seconds_remaining": gsr,
-                "yardline_100": yl,
-                "ydstogo": float(ydstogo),
-                "timeouts_off": float(timeouts_off),
-                "timeouts_def": float(timeouts_def),
-                "is_home": 1.0 if is_home else 0.0,
-                "expected_margin": float(favored_by),
-                "receive_2h": 1.0 if receive_2h else 0.0,
-                "spread_missing": 0.0,
-                "season": float(meta["calibrate_season"]),
-                "indoor": 1.0 if indoor else 0.0,
-                "wind_mph": 0.0 if indoor else float(wind),
-                "cold": 0.0 if indoor else (1.0 if cold else 0.0),
-                "altitude": 1.0 if altitude and not indoor else 0.0,
-            }
-        ]
+    scored = score_situation(
+        int(our_score),
+        int(their_score),
+        int(quarter),
+        int(minutes),
+        int(seconds),
+        str(territory),
+        int(yard_marker),
+        int(ydstogo),
+        int(timeouts_off),
+        int(timeouts_def),
+        float(favored_by),
+        bool(is_home),
+        bool(receive_2h),
+        bool(indoor),
+        int(wind),
+        bool(cold),
+        bool(altitude),
     )
-    graded = choice_win_probs(situation, bundle["wp"], bundle["fg"], bundle["conv"], bundle["punt"])
-    row = graded.row(0, named=True)
-    distance = yl + 17
-    conv: ConversionModel = bundle["conv"]
-    fg: FieldGoalModel = bundle["fg"]
-    probs = conv.predict(
-        situation["ydstogo"].to_numpy(),
-        situation["yardline_100"].to_numpy(),
-        situation["season"].to_numpy(),
-    )
-    p_success = float(probs["p_td"][0] + probs["p_fd"][0])
-    p_td = float(probs["p_td"][0])
-    p_make = float(
-        fg.predict(
-            np.array([distance]),
-            situation["indoor"].to_numpy(),
-            situation["wind_mph"].to_numpy(),
-            situation["cold"].to_numpy(),
-            situation["altitude"].to_numpy(),
-            situation["season"].to_numpy(),
-        )[0]
-    ) if distance <= 68 else 0.0
-
+    yl = scored["yardline_100"]
+    gsr = scored["game_seconds_remaining"]
+    distance = scored["distance"]
     label = {
         "go": "Go for it",
         "punt": "Punt",
         "fg": "Kick the field goal",
-    }[row["recommended"]]
+    }[scored["recommended"]]
     st.subheader(label)
     st.write(
         f"4th and {ydstogo:.0f} from {format_yardline(yl)}, {format_clock(gsr)}. "
-        f"The best option is worth **{row['wp_edge']:.1%}** more win probability than the next one."
+        f"The best option is worth **{scored['wp_edge']:.1%}** more win probability than the next one."
     )
     c1, c2, c3 = st.columns(3)
-    c1.metric("Go for it", f"{row['wp_go']:.1%}")
-    c2.metric("Punt", f"{row['wp_punt']:.1%}")
-    c3.metric("Field goal", f"{row['wp_fg']:.1%}" if distance <= 68 else "Out of range")
+    c1.metric("Go for it", f"{scored['wp_go']:.1%}")
+    c2.metric("Punt", f"{scored['wp_punt']:.1%}")
+    c3.metric("Field goal", f"{scored['wp_fg']:.1%}" if distance <= 68 else "Out of range")
 
     chart = go.Figure(
         go.Bar(
             x=["Go for it", "Punt", "Field goal"],
-            y=[row["wp_go"], row["wp_punt"], row["wp_fg"] if distance <= 68 else 0],
+            y=[scored["wp_go"], scored["wp_punt"], scored["wp_fg"] if distance <= 68 else 0],
             marker_color=["#2E7D4F", "#1F4E79", "#C48A1A"],
-            text=[f"{row['wp_go']:.1%}", f"{row['wp_punt']:.1%}", f"{row['wp_fg']:.1%}" if distance <= 68 else "—"],
+            text=[
+                f"{scored['wp_go']:.1%}",
+                f"{scored['wp_punt']:.1%}",
+                f"{scored['wp_fg']:.1%}" if distance <= 68 else "—",
+            ],
             textposition="outside",
         )
     )
@@ -271,20 +338,22 @@ def main() -> None:
         plot_bgcolor="#FBF8F3",
         paper_bgcolor="white",
     )
-    st.plotly_chart(chart, use_container_width=True)
+    st.plotly_chart(chart, width="stretch")
 
     detail_left, detail_right = st.columns(2)
     with detail_left:
         st.markdown("**What the pieces say**")
         st.write(
-            f"League-average conversion chance: **{p_success:.0%}**, "
-            f"including a **{p_td:.0%}** chance the play is a touchdown."
+            f"League-average conversion chance: **{scored['p_success']:.0%}**, "
+            f"including a **{scored['p_td']:.0%}** chance the play is a touchdown."
         )
         if distance <= 68:
-            st.write(f"A field goal from here is **{distance:.0f}** yards and goes in about **{p_make:.0%}** of the time.")
+            st.write(
+                f"A field goal from here is **{distance:.0f}** yards and goes in about **{scored['p_make']:.0%}** of the time."
+            )
         else:
             st.write(f"A field goal would be **{distance:.0f}** yards, past the range this model will recommend.")
-        touchback_yl = kickoff_yardline_100(int(meta["calibrate_season"]))
+        touchback_yl = kickoff_yardline_100(int(scored["calibrate_season"]))
         st.write(
             f"After a score, the other team is spotted at their own {100 - touchback_yl:.0f} "
             "on a touchback, using that season's kickoff rule."
@@ -300,8 +369,8 @@ def main() -> None:
             "A strong offense should go a little more often than the chart says; a shaky kicking game should kick a little less."
         )
         st.write(
-            f"Trees trained on {meta['train_seasons'][0]}–{meta['train_seasons'][-1]}, "
-            f"probabilities scaled on {meta['calibrate_season']}. "
+            f"Trees trained on {scored['train_first']}–{scored['train_last']}, "
+            f"probabilities scaled on {scored['calibrate_season']}. "
             "Coach grades in the README use a stricter out-of-season model."
         )
 

@@ -2,7 +2,7 @@
 name = "fourth-down"
 version = "1.0.0"
 description = "NFL fourth-down decisions from a from-scratch win probability model."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 readme = "README.md"
 
 [tool.pytest.ini_options]

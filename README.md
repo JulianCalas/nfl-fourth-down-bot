@@ -1,3 +1,5 @@
+Live app: paste the Streamlit Community Cloud URL here.
+
 # Fourth down: go, punt, or kick?
 
 On each 4th down, which choice gives the offense the higher chance of winning the game: going for it, punting, or kicking a field goal? NFL coaches follow that recommendation a little more than half the time. When the model says to go and the call is clear, they go less than half the time, and that is where almost all of the win probability gets left on the table. They have become more aggressive. In 2018 they went for it on 31% of clear "go" calls. In 2025 they went on 54%. A model-free check, 4th-and-1 between the 40s, moved from 40% to 70% over the same years.
@@ -20,16 +22,24 @@ The grades below use play-by-play from the 2014 through 2025 seasons. Every coac
 
 ## How to run
 
-Python 3.11 or newer. From the repo root:
+Python 3.12 (`.python-version`). The pinned runtime needs 3.12: `numpy` 2.5.4, `scipy` 1.18.1, and `xgboost` 3.4.1 do not publish 3.11 wheels, and those are the versions that match `models/current.joblib`. From the repo root, the app reads that committed bundle and does not need the gitignored play-by-play cache:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+streamlit run app/streamlit_app.py
+```
+
+Streamlit Community Cloud uses the `main` branch and the entry point `app/streamlit_app.py`.
+
+Rebuilding the grades, figures, and model needs the extra packages and a local cache (`data/raw/pbp_slim.parquet`, gitignored, about 27 MB):
+
+```bash
+pip install -r requirements-dev.txt
 python3 scripts/pull_data.py          # writes data/raw/pbp_slim.parquet; skips the download if it is already there
 python3 scripts/run_pipeline.py       # writes results/, figures/, and models/current.joblib
 pytest
-streamlit run app/streamlit_app.py --server.port 8741 --server.address 0.0.0.0
 ```
 
 The notebook reads the saved results and the saved model. It does not refit anything:
@@ -223,7 +233,9 @@ These are the largest out-of-sample gaps in the graded file, plus one high-lever
 ## What is in the repo
 
 ```
-app/streamlit_app.py          one situation in, three win probabilities out
+app/streamlit_app.py          Streamlit entry point: one situation in, three win probabilities out
+requirements.txt              pinned runtime packages for the app
+requirements-dev.txt          training, notebook, and test extras
 notebooks/fourth_down_story.ipynb
 src/fourth_down/              data, features, models, decision engine, plots, pipeline
 sql/                          DuckDB aggregations for teams, coaches, and the trend
